@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GullyScore - Live Scoring</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased min-h-screen p-4 flex justify-center">
+
+    <div class="w-full max-w-md flex flex-col h-[95vh]">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold tracking-wider text-green-400">GULLYSCORE</h1>
+            <button onclick="resetMatch()" class="text-sm bg-gray-800 px-3 py-1 rounded-full text-gray-300 border border-gray-700 active:scale-95 transition-transform">
+                Reset Match
+            </button>
+        </div>
+
+        <div class="bg-gray-800 rounded-2xl p-6 mb-6 shadow-lg border border-gray-700">
+            <div class="flex justify-between items-end mb-2">
+                <div class="text-6xl font-black tracking-tighter">
+                    <span id="scoreDisplay">0</span><span class="text-3xl text-gray-400 font-bold">/<span id="wicketsDisplay">0</span></span>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-400 font-semibold uppercase tracking-wider">Overs</div>
+                    <div class="text-3xl font-bold text-green-400">
+                        <span id="oversDisplay">0.0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-between text-sm text-gray-400 font-medium border-t border-gray-700 pt-3 mt-2">
+                <span>CRR: <span id="crrDisplay">0.00</span></span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mb-4">
+            <button onclick="addRuns(0)" class="py-4 rounded-xl text-2xl font-bold bg-gray-700 text-white shadow-md active:scale-95 transition-transform">0</button>
+            <button onclick="addRuns(1)" class="py-4 rounded-xl text-2xl font-bold bg-gray-700 text-white shadow-md active:scale-95 transition-transform">1</button>
+            <button onclick="addRuns(2)" class="py-4 rounded-xl text-2xl font-bold bg-gray-700 text-white shadow-md active:scale-95 transition-transform">2</button>
+            <button onclick="addRuns(3)" class="py-4 rounded-xl text-2xl font-bold bg-gray-700 text-white shadow-md active:scale-95 transition-transform">3</button>
+            <button onclick="addRuns(4)" class="py-4 rounded-xl text-2xl font-bold bg-green-600 text-white shadow-md active:scale-95 transition-transform">4</button>
+            <button onclick="addRuns(6)" class="py-4 rounded-xl text-2xl font-bold bg-green-600 text-white shadow-md active:scale-95 transition-transform">6</button>
+        </div>
+
+        <div class="grid grid-cols-4 gap-2 mb-6">
+            <button onclick="addExtra('wd')" class="py-3 bg-blue-900 text-blue-200 font-bold rounded-lg active:scale-95 transition-transform">Wd</button>
+            <button onclick="addExtra('nb')" class="py-3 bg-blue-900 text-blue-200 font-bold rounded-lg active:scale-95 transition-transform">Nb</button>
+            <button onclick="addExtra('bye')" class="py-3 bg-gray-700 text-gray-300 font-bold rounded-lg border border-gray-600 active:scale-95 transition-transform">B</button>
+            <button onclick="addExtra('lb')" class="py-3 bg-gray-700 text-gray-300 font-bold rounded-lg border border-gray-600 active:scale-95 transition-transform">Lb</button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mt-auto mb-4">
+            <button onclick="addWicket()" class="col-span-2 py-4 bg-red-600 text-white text-xl font-black uppercase tracking-widest rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.5)] active:scale-95 transition-transform">
+                Wicket
+            </button>
+            <button onclick="undoLast()" id="undoBtn" class="col-span-1 py-4 bg-gray-800 border border-gray-600 text-gray-300 font-bold rounded-xl active:scale-95 transition-transform disabled:opacity-50" disabled>
+                Undo
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // State variables
+        let score = 0;
+        let wickets = 0;
+        let balls = 0; // Tracks valid deliveries only
+        let history = []; // Array to store previous states for the Undo feature
+
+        // Core Functions
+        function saveState() {
+            history.push({ score, wickets, balls });
+            document.getElementById('undoBtn').disabled = false;
+        }
+
+        function addRuns(runs) {
+            if (wickets >= 10) return; // Prevent scoring after all out
+            saveState();
+            score += runs;
+            balls += 1;
+            updateUI();
+        }
+
+        function addExtra(type) {
+            if (wickets >= 10) return;
+            saveState();
+            
+            if (type === 'wd' || type === 'nb') {
+                score += 1; // 1 penalty run, ball does not count
+            } else if (type === 'bye' || type === 'lb') {
+                score += 1; // 1 run scored, ball counts as valid
+                balls += 1;
+            }
+            updateUI();
+        }
+
+        function addWicket() {
+            if (wickets >= 10) return;
+            saveState();
+            wickets += 1;
+            balls += 1;
+            updateUI();
+        }
+
+        function undoLast() {
+            if (history.length === 0) return;
+            
+            // Pop the last state and apply it
+            const lastState = history.pop();
+            score = lastState.score;
+            wickets = lastState.wickets;
+            balls = lastState.balls;
+            
+            // Disable button if history is empty
+            if (history.length === 0) {
+                document.getElementById('undoBtn').disabled = true;
+            }
+            
+            updateUI();
+        }
+
+        function resetMatch() {
+            if(confirm("Are you sure you want to reset the match?")) {
+                score = 0;
+                wickets = 0;
+                balls = 0;
+                history = [];
+                document.getElementById('undoBtn').disabled = true;
+                updateUI();
+            }
+        }
+
+        // UI Update Logic
+        function updateUI() {
+            // Calculate overs (e.g., 8 balls = 1.2 overs)
+            const completedOvers = Math.floor(balls / 6);
+            const currentBall = balls % 6;
+            
+            // Calculate Current Run Rate (CRR)
+            let crr = 0;
+            if (balls > 0) {
+                crr = (score / (balls / 6)).toFixed(2);
+            }
+
+            // Update DOM elements
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('wicketsDisplay').innerText = wickets;
+            document.getElementById('oversDisplay').innerText = `${completedOvers}.${currentBall}`;
+            document.getElementById('crrDisplay').innerText = crr;
+        }
+
+        // Initial UI render
+        updateUI();
+    </script>
+</body>
+</html>
